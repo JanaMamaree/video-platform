@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video List by Player</title>
+  <style>
+    body {
+      font-family: Segoe UI, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+      color: #222;
+      margin-bottom: 20px;
+    }
+    form {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+      gap: 10px;
+    }
+    select, button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #cc0000;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #e60000; }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      justify-items: center;
+    }
+    .video-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      max-width: 400px;
+    }
+    .video-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    video {
+      width: 100%;
+      border-bottom: 1px solid #ddd;
+      border-radius: 12px 12px 0 0;
+    }
+    .video-info {
+      padding: 10px 15px;
+    }
+    .video-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 5px 0;
+      color: #111;
+    }
+    .timestamps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .timestamp-badge {
+      background: #cc0000;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .timestamp-badge:hover { background: #e60000; }
+  </style>
+</head>
+<body>
+  <h2>Video List by Player</h2>
+
+  <form method="get">
+    <select name="player">
+      <option value="">All Players</option>
+      {% for player in players %}
+        <option value="{{ player.id }}" {% if player == selected_player %}selected{% endif %}>
+          {{ player.name }}
+        </option>
+      {% endfor %}
+    </select>
+    <button type="submit">Search</button>
+  </form>
+
+  {% if results %}
+    <div class="video-grid">
+      {% for item in results %}
+        <div class="video-card">
+          <video id="video-{{ item.video.id }}" controls>
+            <source src="{{ item.video.file.url }}" type="video/mp4">
+          </video>
+          <div class="video-info">
+            <p class="video-title">{{ item.video.title }}</p>
+
+            {% if item.timestamps %}
+              <div class="timestamps">
+                {% for ts in item.timestamps %}
+                  <span class="timestamp-badge" onclick="seekVideo('{{ item.video.id }}','{{ ts }}')">{{ ts }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="text-align:center;color:#777">No videos found.</p>
+  {% endif %}
+
+  <script>
+    function timeToSeconds(str) {
+      const parts = str.split(":").map(Number);
+      return parts.length === 3 ? parts[0]*3600 + parts[1]*60 + parts[2] : parts[0]*60 + parts[1];
+    }
+    function seekVideo(id, ts) {
+      const v = document.getElementById("video-" + id);
+      if(v){ v.currentTime = timeToSeconds(ts); v.play(); }
+    }
+  </script>
+</body>
+</html>
