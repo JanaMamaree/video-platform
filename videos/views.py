@@ -66,6 +66,12 @@ def upload_video(request):
                             ts = format_time(word.start)
                             VideoPlayer.objects.create(video=video, player=player_obj, timestamp=ts)
             print("Processing done for all players and timestamps.")
+
+            # Delete audio file after processing
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+
+
             return render(request, "videos/upload_video.html", {
                 "form": form,
                 "message": "Processing done!"
