@@ -177,3 +177,38 @@ def logout_view(request):
 
 def dashboard_view(request):
     return render(request, "videos/dashboard.html")
+
+
+import os
+from django.http import FileResponse, HttpResponse, HttpResponseNotFound
+from django.conf import settings
+
+def stream_video(request, path):
+    file_path = os.path.join(settings.MEDIA_ROOT, path)
+    if not os.path.exists(file_path):
+        return HttpResponseNotFound()
+
+    file_size = os.path.getsize(file_path)
+    range_header = request.headers.get("Range", "").strip()
+    if range_header:
+        # Example: "bytes=1000-"
+        range_match = range_header.split("=")[-1]
+        start, end = range_match.split("-")
+        start = int(start) if start else 0
+        end = int(end) if end else file_size - 1
+        length = end - start + 1
+
+        with open(file_path, "rb") as f:
+            f.seek(start)
+            data = f.read(length)
+
+        resp = HttpResponse(data, status=206, content_type="video/mp4")
+        resp["Content-Range"] = f"bytes {start}-{end}/{file_size}"
+        resp["Accept-Ranges"] = "bytes"
+        resp["Content-Length"] = str(length)
+        return resp
+
+    # fallback (no Range header → send full file)
+    response = FileResponse(open(file_path, "rb"), content_type="video/mp4")
+    response["Content-Length"] = str(file_size)
+    return response

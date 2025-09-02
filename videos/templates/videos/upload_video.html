@@ -3,31 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <title>Upload Video</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body {
-      font-family: Segoe UI, sans-serif;
-      background: #f9f9f9;
+      font-family: "Segoe UI", sans-serif;
+      background: #f4f5f7;
       margin: 0;
-      padding: 20px;
-      color: #333;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background: #cc0000;
+      color: #fff;
+      padding: 15px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header .logo {
+      font-size: 22px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header nav a {
+      color: #fff;
+      margin-left: 20px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    header nav a:hover {
+      color: #ffe6e6;
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
 
     h2 {
       text-align: center;
       color: #222;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
+      font-size: 28px;
     }
 
     .upload-card {
       background: #fff;
-      max-width: 500px;
-      margin: 0 auto;
-      padding: 30px;
+      max-width: 520px;
+      width: 100%;
+      padding: 35px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       transition: transform 0.2s, box-shadow 0.2s;
     }
-
     .upload-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 8px 30px rgba(0,0,0,0.15);
@@ -36,19 +79,18 @@
     form {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 18px;
     }
 
-    input, select {
-      padding: 12px;
+    input, select, textarea {
+      padding: 12px 14px;
       font-size: 16px;
       border-radius: 6px;
       border: 1px solid #ccc;
       outline: none;
       transition: border 0.2s, box-shadow 0.2s;
     }
-
-    input:focus, select:focus {
+    input:focus, select:focus, textarea:focus {
       border-color: #cc0000;
       box-shadow: 0 0 5px rgba(204,0,0,0.3);
     }
@@ -63,8 +105,11 @@
       cursor: pointer;
       font-weight: bold;
       transition: background 0.2s, transform 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
-
     button:hover {
       background: #e60000;
       transform: translateY(-2px);
@@ -76,21 +121,58 @@
       color: #27ae60;
       margin-bottom: 20px;
     }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      background: #222;
+      color: #ccc;
+      text-align: center;
+      padding: 15px;
+      font-size: 14px;
+    }
+    footer a {
+      color: #ff6666;
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h2>Upload Video</h2>
+  <!-- Header -->
+  <header>
+    <div class="logo"><i class="fa-solid fa-play-circle"></i> My Video Platform</div>
+    <nav>
+      <a href="#"><i class="fa-solid fa-home"></i> Home</a>
+      <a href="#"><i class="fa-solid fa-users"></i> Players</a>
+      <a href="#"><i class="fa-solid fa-video"></i> Videos</a>
+      <a href="#"><i class="fa-solid fa-upload"></i> Upload</a>
+      <a href="#"><i class="fa-solid fa-gear"></i> Settings</a>
+    </nav>
+  </header>
 
-  {% if message %}
-    <p class="message">{{ message }}</p>
-  {% endif %}
+  <!-- Content -->
+  <div class="content">
+    <div>
+      <h2><i class="fa-solid fa-upload"></i> Upload Video</h2>
 
-  <div class="upload-card">
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Upload & Process</button>
-    </form>
+      {% if message %}
+        <p class="message">{{ message }}</p>
+      {% endif %}
+
+      <div class="upload-card">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          {{ form.as_p }}
+          <button type="submit"><i class="fa-solid fa-cloud-arrow-up"></i> Upload & Process</button>
+        </form>
+      </div>
+    </div>
   </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 My Video Platform. All rights reserved. | <a href="#">Privacy Policy</a></p>
+  </footer>
 </body>
 </html>

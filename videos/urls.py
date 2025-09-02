@@ -8,4 +8,5 @@ urlpatterns = [
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('upload/', views.upload_video, name='upload_video'),
     path('videos/', views.video_list, name='video_list'),
+    path("stream/<path:path>", views.stream_video, name="stream_video"),
 ]
