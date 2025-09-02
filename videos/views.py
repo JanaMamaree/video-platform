@@ -1,40 +1,52 @@
-from django.shortcuts import render
-from .forms import VideoUploadForm
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+from .forms import RegistrationForm, LoginForm, VideoUploadForm
 from .models import Video, Player, VideoPlayer
+from faster_whisper import WhisperModel
+from collections import defaultdict
 import subprocess
 import os
 import datetime
-from faster_whisper import WhisperModel
-from collections import defaultdict
+
 
 # Helper function to format seconds into hh:mm:ss
 def format_time(seconds):
     return str(datetime.timedelta(seconds=int(seconds)))
 
+
 def upload_video(request):
     if request.method == "POST":
         form = VideoUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            print("Form is valid. Saving video...")
             video = form.save()
+            print(f"Video saved: {video.file.path}")
 
-            # Parse player names from form (split by '+')
+            # Parse player names from form (split by commas)
             players_text = form.cleaned_data['players']
             player_names = [p.strip() for p in players_text.split(',')]
+            print(f"Players parsed: {player_names}")
             player_objs = []
             for name in player_names:
-                player_obj, _ = Player.objects.get_or_create(name=name)
+                player_obj, created = Player.objects.get_or_create(name=name)
                 player_objs.append(player_obj)
+                print(f"{'Created' if created else 'Fetched'} player: {player_obj.name}")
 
             # Extract audio from video if it doesn't exist
             video_path = video.file.path
             audio_path = os.path.join(os.path.dirname(video_path), "audio.mp3")
             if not os.path.exists(audio_path):
+                print("Extracting audio from video...")
                 subprocess.run(
                     ["ffmpeg", "-i", video_path, "-vn", "-acodec", "mp3", audio_path, "-y"],
                     check=True
                 )
+                print(f"Audio extracted: {audio_path}")
+            else:
+                print(f"Audio already exists: {audio_path}")
 
             # Transcribe audio using Whisper
+            print("Starting transcription using Whisper...")
             model = WhisperModel("small", device="cpu", compute_type="int8")
             segments, _ = model.transcribe(
                 audio_path,
@@ -42,21 +54,25 @@ def upload_video(request):
                 language="it",
                 word_timestamps=True
             )
+            print("Transcription completed!")
+
 
             # Match player names to words in transcription
+            print("Matching player names to words in transcription...")
             for segment in segments:
                 for word in segment.words:
                     for player_obj in player_objs:
                         if player_obj.name.lower() in word.word.lower():
                             ts = format_time(word.start)
                             VideoPlayer.objects.create(video=video, player=player_obj, timestamp=ts)
-
+            print("Processing done for all players and timestamps.")
             return render(request, "videos/upload_video.html", {
                 "form": form,
                 "message": "Processing done!"
             })
     else:
         form = VideoUploadForm()
+        print("Rendering empty form for GET request.")
 
     return render(request, "videos/upload_video.html", {"form": form})
 
@@ -92,13 +108,6 @@ def video_list(request):
         "selected_player": selected_player,
     })
 
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from .forms import RegistrationForm, LoginForm, VideoUploadForm
-from .models import Video, Player, VideoPlayer
-import subprocess, os, datetime
-from faster_whisper import WhisperModel
-from collections import defaultdict
 
 def register_view(request):
     if request.method == "POST":
@@ -111,6 +120,7 @@ def register_view(request):
     else:
         form = RegistrationForm()
     return render(request, "videos/register.html", {"form": form})
+
 
 def login_view(request):
     if request.method == "POST":
@@ -128,10 +138,11 @@ def login_view(request):
         form = LoginForm()
     return render(request, "videos/login.html", {"form": form})
 
+
 def logout_view(request):
     logout(request)
     return redirect('login')
 
+
 def dashboard_view(request):
-    # User chooses where to go
     return render(request, "videos/dashboard.html")
