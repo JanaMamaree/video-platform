@@ -25,87 +25,31 @@ def get_video_duration(video_path):
     )
     return float(result.stdout)
 
+from .tasks import process_video_task
+
 def upload_video(request):
     if request.method == "POST":
         form = VideoUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            print("Form is valid. Saving video...", flush=True)
-            video = form.save()
-            print(f"Video saved: {video.file.path}", flush=True)
+            video = form.save(commit=False)
+            video.status = 'processing'
+            video.save()
 
-            # Parse players
             players_text = form.cleaned_data['players']
-            player_names = [p.strip() for p in players_text.split(',')]
-            player_name_map = {name.lower(): Player.objects.get_or_create(name=name)[0] for name in player_names}
-
-            # Extract audio
-            print("[STEP 3] Extracting audio...", flush=True)
-            tmpdir = tempfile.mkdtemp()
-            try:
-                audio_path = os.path.join(tmpdir, "audio.wav")
-                video_path = video.file.path
-                subprocess.run(
-                    ["ffmpeg", "-i", video_path, "-vn", "-acodec", "pcm_s16le",
-                     "-ar", "16000", "-ac", "1", audio_path, "-y"],
-                    check=True
-                )
-                print(f"✅ Audio extracted: {audio_path}", flush=True)
-
-                total_seconds = get_video_duration(video_path)
-                total_formatted = format_time(total_seconds)
-
-                # Load Whisper
-                print("Starting transcription using Whisper (CPU)...", flush=True)
-                model = WhisperModel("tiny", device="cpu", compute_type="int8")
-                segments, _ = model.transcribe(audio_path, beam_size=1, language="it", word_timestamps=True)
-                print("Transcription completed!", flush=True)
-
-                # Compile regex for all player names
-                pattern = re.compile(r"\b(" + "|".join(map(re.escape, player_name_map.keys())) + r")\b", re.IGNORECASE)
-
-                # Match players efficiently
-                matches = []
-                last_print_second = -1
-                for segment in segments:
-                    for word in segment.words:
-                        current_second = int(word.start)
-                        if current_second != last_print_second:
-                            print(f"Processing word at {format_time(word.start)} / {total_formatted}", flush=True)
-                            last_print_second = current_second
-
-                        # Search for any player in this word
-                        match = pattern.search(word.word)
-                        if match:
-                            pname_lower = match.group(0).lower()
-                            player_obj = player_name_map[pname_lower]
-                            ts = format_time(word.start)
-                            matches.append(VideoPlayer(video=video, player=player_obj, timestamp=ts))
-                            print(f"⏱ {ts} → Player matched: {player_obj.name}", flush=True)
-
-                # Bulk save all matches
-                if matches:
-                    VideoPlayer.objects.bulk_create(matches)
-                    print(f"✅ {len(matches)} timestamps saved for players.", flush=True)
-                else:
-                    print("No player mentions found.", flush=True)
-
-            finally:
-                shutil.rmtree(tmpdir, ignore_errors=True)
-                print(f"Temporary audio folder deleted: {tmpdir}", flush=True)
+            process_video_task.delay(video.id, players_text)
 
             return render(request, "videos/upload_video.html", {
-                "form": form,
-                "message": "Processing done!"
+                "form": VideoUploadForm(),
+                "message": "Your video is being processed, you will be able to see it when it's ready."
             })
-
         else:
             print("Form invalid!", flush=True)
-
     else:
         form = VideoUploadForm()
         print("Rendering empty form for GET request.", flush=True)
 
     return render(request, "videos/upload_video.html", {"form": form})
+
 
 
 def video_list(request):
@@ -117,20 +61,16 @@ def video_list(request):
         player_id = request.GET.get("player")
         try:
             selected_player = Player.objects.get(id=player_id)
-
-            # Group timestamps by video
             video_dict = defaultdict(list)
-            vps = VideoPlayer.objects.filter(player=selected_player).order_by("timestamp")
+            vps = VideoPlayer.objects.filter(player=selected_player, video__status='ready').order_by("timestamp")
             for vp in vps:
                 video_dict[vp.video].append(vp.timestamp)
-
             for video, timestamps in video_dict.items():
                 results.append({"video": video, "timestamps": timestamps})
         except Player.DoesNotExist:
             pass
     else:
-        # Show all videos with empty timestamps
-        for video in Video.objects.all():
+        for video in Video.objects.filter(status='ready'):
             results.append({"video": video, "timestamps": []})
 
     return render(request, "videos/video_list.html", {
@@ -138,6 +78,7 @@ def video_list(request):
         "results": results,
         "selected_player": selected_player,
     })
+
 
 
 def register_view(request):

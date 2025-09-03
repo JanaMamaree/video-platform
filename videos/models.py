@@ -9,8 +9,12 @@ class Player(models.Model):
 class Video(models.Model):
     title = models.CharField(max_length=200)
     file = models.FileField(upload_to='videos/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)  # automatically set when saving
-
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[('processing', 'Processing'), ('ready', 'Ready')],
+        default='processing'
+    )
 
     def __str__(self):
         return self.title
